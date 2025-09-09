@@ -309,12 +309,123 @@ def benchmark_with_profiling(model: nn.Module, data: torch.Tensor, **config) -> 
 
     # Calculate statistics
     stats = {}
-    for key in results:
-        if results[key]:
-            stats[f"{key}_mean"] = np.mean(results[key])
-            stats[f"{key}_std"] = np.std(results[key])
+    for key, value in results.items():
+        if value:
+            stats[f"{key}_mean"] = np.mean(value)
+            stats[f"{key}_std"] = np.std(value)
 
     return stats
+
+
+def create_markdown_report(
+    args,
+    stats: Dict,
+    total_params: int,
+    device: str,
+    status: str = "success"
+) -> str:
+    """
+    Create a formatted markdown report of the benchmarking results.
+    
+    Args:
+        args: Command-line arguments
+        stats: Dictionary of timing statistics
+        total_params: Total number of model parameters
+        device: Device used (cuda/cpu)
+        status: Status of the run ("success" or "OOM")
+    
+    Returns:
+        Formatted markdown string
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Start building the markdown report
+    md_lines = []
+    md_lines.append(f"# Benchmarking Results: {args.model_size.upper()} Model\n")
+    md_lines.append(f"*Generated: {timestamp}*\n")
+    
+    # Configuration section
+    md_lines.append("## Configuration\n")
+    md_lines.append(f"- **Model Size**: {args.model_size}")
+    md_lines.append(f"- **Device**: {device}")
+    md_lines.append(f"- **Total Parameters**: {total_params / 1e6:.2f}M")
+    md_lines.append(f"- **Vocabulary Size**: {args.vocab_size:,}")
+    md_lines.append("")
+    
+    # Test parameters section
+    md_lines.append("## Test Parameters\n")
+    md_lines.append(f"- **Batch Size**: {args.batch_size}")
+    md_lines.append(f"- **Sequence Length**: {args.sequence_length}")
+    md_lines.append(f"- **Context Length**: {args.context_length}")
+    md_lines.append(f"- **Warmup Steps**: {args.n_warmup}")
+    md_lines.append(f"- **Measurement Steps**: {args.n_steps}")
+    md_lines.append("")
+    
+    if status == "OOM":
+        # Handle OOM case
+        md_lines.append("## Status\n")
+        md_lines.append("⚠️ **Out of Memory Error**")
+        md_lines.append("")
+        md_lines.append(f"The model configuration ({args.model_size}) with sequence length "
+                       f"{args.sequence_length} exceeded available GPU memory.")
+        md_lines.append("")
+    else:
+        # Performance results table
+        md_lines.append("## Performance Results\n")
+        md_lines.append("| Metric | Mean (ms) | Std Dev (ms) |")
+        md_lines.append("|--------|-----------|--------------|")
+        
+        # Forward pass
+        forward_mean = stats.get('forward_times_mean', 0) * 1000
+        forward_std = stats.get('forward_times_std', 0) * 1000
+        md_lines.append(f"| Forward Pass | {forward_mean:.2f} | ±{forward_std:.2f} |")
+        
+        # Backward pass
+        backward_mean = stats.get('backward_times_mean', 0) * 1000
+        backward_std = stats.get('backward_times_std', 0) * 1000
+        md_lines.append(f"| Backward Pass | {backward_mean:.2f} | ±{backward_std:.2f} |")
+        
+        # Optimizer step (if applicable)
+        if args.with_optimizer:
+            opt_mean = stats.get('optimizer_times_mean', 0) * 1000
+            opt_std = stats.get('optimizer_times_std', 0) * 1000
+            if opt_mean > 0:
+                md_lines.append(f"| Optimizer Step | {opt_mean:.2f} | ±{opt_std:.2f} |")
+        
+        # Total time
+        total_mean = stats.get('total_times_mean', 0) * 1000
+        total_std = stats.get('total_times_std', 0) * 1000
+        md_lines.append(f"| **Total per Step** | **{total_mean:.2f}** | **±{total_std:.2f}** |")
+        md_lines.append("")
+        
+        # Throughput calculations
+        md_lines.append("## Throughput Metrics\n")
+        if total_mean > 0:
+            steps_per_second = 1000 / total_mean
+            tokens_per_step = args.batch_size * args.sequence_length
+            tokens_per_second = tokens_per_step * steps_per_second
+            md_lines.append(f"- **Steps/second**: {steps_per_second:.2f}")
+            md_lines.append(f"- **Tokens/step**: {tokens_per_step:,}")
+            md_lines.append(f"- **Tokens/second**: {tokens_per_second:,.0f}")
+        md_lines.append("")
+    
+    # Additional information
+    md_lines.append("## Additional Information\n")
+    md_lines.append(f"- **Optimizer**: {'AdamW' if args.with_optimizer else 'None'}")
+    md_lines.append(f"- **CUDA Synchronization**: {'Enabled' if device == 'cuda' and not args.no_cuda_sync else 'Disabled'}")
+    md_lines.append(f"- **NVTX Annotations**: {'Enhanced' if args.enhanced_annotations else 'Attention Only' if args.annotate_attention else 'Disabled'}")
+    md_lines.append("")
+    
+    # Notes section
+    md_lines.append("## Notes\n")
+    if NVTX_AVAILABLE and device == "cuda":
+        md_lines.append("- Profile generated with NVTX annotations for detailed kernel analysis")
+        md_lines.append("- Use `nsys-ui` to visualize the generated `.nsys-rep` file")
+    else:
+        md_lines.append("- NVTX annotations not available (CPU mode or CUDA not available)")
+    md_lines.append("")
+    
+    return "\n".join(md_lines)
 
 
 def main() -> int:
@@ -384,6 +495,9 @@ def main() -> int:
     # Output configuration
     parser.add_argument(
         "--output-json", type=str, default=None, help="Save results to JSON file"
+    )
+    parser.add_argument(
+        "--output-md", type=str, default=None, help="Save results to Markdown file"
     )
 
     args = parser.parse_args()
@@ -483,6 +597,13 @@ def main() -> int:
                 json.dump(results, f, indent=2)
             logger.info("Results saved to %s", args.output_json)
 
+        # Save markdown report if requested
+        if args.output_md:
+            md_content = create_markdown_report(args, stats, total_params, device)
+            with open(args.output_md, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            logger.info("Markdown report saved to %s", args.output_md)
+
         return 0
 
     except torch.cuda.OutOfMemoryError:
@@ -502,6 +623,13 @@ def main() -> int:
             }
             with open(args.output_json, "w", encoding="utf-8") as f:
                 json.dump(results, f, indent=2)
+
+        # Save OOM markdown report if requested
+        if args.output_md:
+            md_content = create_markdown_report(args, {}, 0, "cuda", status="OOM")
+            with open(args.output_md, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            logger.info("OOM markdown report saved to %s", args.output_md)
 
         return 1
 
