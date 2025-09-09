@@ -37,7 +37,7 @@ def setup_logging(
     """
     # Create logs directory if it doesn't exist
     log_path = Path(log_dir)
-    log_path.mkdir(exist_ok=True)
+    log_path.mkdir(parents=True, exist_ok=True)
 
     # Get or create logger
     logger = logging.getLogger(name)
