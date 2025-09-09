@@ -106,7 +106,7 @@ def run_profiling_command(
             cmd,
             capture_output=True,
             text=True,
-            timeout=600,  # 10 minute timeout
+            timeout=1800,  # 30 minute timeout
             check=False
         )
 
