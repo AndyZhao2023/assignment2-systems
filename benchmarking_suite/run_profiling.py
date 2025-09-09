@@ -120,14 +120,58 @@ def run_profiling_command(
                     return json.load(f)
             else:
                 return {"status": "success", "note": "No JSON output"}
-        # Check if it was OOM
-        if "OutOfMemoryError" in result.stderr or result.returncode == 1:
+        
+        # Detailed error analysis
+        stderr_lower = result.stderr.lower()
+        stdout_lower = result.stdout.lower()
+        
+        # Check for actual OOM errors (not just exit code 1)
+        oom_indicators = [
+            "outofmemoryerror", 
+            "out of memory", 
+            "cuda out of memory",
+            "cuda error: out of memory",
+            "runtime error: cuda out of memory"
+        ]
+        
+        if any(indicator in stderr_lower or indicator in stdout_lower for indicator in oom_indicators):
             logger.warning("✗ OOM: %s", base_name)
+            logger.warning("OOM details: %s", result.stderr[:200])
             return {"status": "OOM", "model_size": model_size, "context_length": context_length}
-
-        logger.error("✗ Error: %s", base_name)
-        logger.error("Error output: %s", result.stderr)
-        return {"status": "error", "error": result.stderr}
+        
+        # Check for import/module errors
+        import_indicators = ["importerror", "modulenotfounderror", "no module named"]
+        if any(indicator in stderr_lower for indicator in import_indicators):
+            logger.error("✗ Import Error: %s", base_name)
+            logger.error("Import error details: %s", result.stderr[:300])
+            return {"status": "import_error", "error": result.stderr}
+        
+        # Check for CUDA errors
+        cuda_indicators = ["cuda error", "cuda runtime error", "cuda driver", "no cuda device"]
+        if any(indicator in stderr_lower for indicator in cuda_indicators):
+            logger.error("✗ CUDA Error: %s", base_name)
+            logger.error("CUDA error details: %s", result.stderr[:300])
+            return {"status": "cuda_error", "error": result.stderr}
+        
+        # Check for argument/configuration errors
+        if result.returncode == 2 or "argument" in stderr_lower or "usage:" in stderr_lower:
+            logger.error("✗ Argument Error: %s", base_name)
+            logger.error("Argument error details: %s", result.stderr[:300])
+            return {"status": "argument_error", "error": result.stderr}
+        
+        # Generic error with more details
+        logger.error("✗ Error: %s (exit code %d)", base_name, result.returncode)
+        logger.error("Command: %s", ' '.join(cmd))
+        logger.error("STDERR: %s", result.stderr[:500])
+        if result.stdout:
+            logger.error("STDOUT: %s", result.stdout[:200])
+        
+        return {
+            "status": "error", 
+            "error": result.stderr, 
+            "exit_code": result.returncode,
+            "stdout": result.stdout[:200] if result.stdout else None
+        }
 
     except subprocess.TimeoutExpired:
         logger.error("✗ Timeout: %s", base_name)
