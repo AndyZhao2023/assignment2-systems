@@ -70,7 +70,6 @@ def run_profiling_command(
             "--pytorch=autograd-nvtx",  # Automatic PyTorch annotation with NVTX
             f"--output={profile_output}",
             "--force-overwrite=true",
-            "--stats=true",  # Generate statistics
             "--python-backtrace=cuda",  # Python backtraces for CUDA calls
             "python", "benchmark_profiling.py",
             "--model-size", model_size,
