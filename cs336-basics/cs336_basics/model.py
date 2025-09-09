@@ -523,5 +523,6 @@ class CausalMultiHeadSelfAttention(nn.Module):
         output = self.output_proj(attn_output)
         return output
 
-def silu(x: torch.Tensor):
+def silu(x: Float[Tensor, "..."]) -> Float[Tensor, "..."]:
+    """SiLU (Swish) activation function."""
     return x * torch.sigmoid(x)

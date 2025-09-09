@@ -6,14 +6,17 @@ Problem (benchmarking_script): End-to-end benchmarking of Transformer models
 
 import argparse
 import timeit
-import torch
-import torch.nn as nn
-import numpy as np
-from typing import Dict, Tuple, Optional
-import sys
+from typing import Tuple
 
-# Import the Transformer model from cs336_basics
+import numpy as np
+import torch
+from torch import nn
+
 from cs336_basics.model import BasicsTransformerLM
+from logging_config import create_benchmark_logger
+
+# Set up logging
+logger = create_benchmark_logger(__name__)
 
 
 # Model configurations from Table 1 in Section 1.1.2
@@ -58,12 +61,14 @@ def create_model(
     device: str = "cpu"
 ) -> BasicsTransformerLM:
     """Create a Transformer model with the specified configuration."""
-    
+
     if model_size not in MODEL_CONFIGS:
-        raise ValueError(f"Invalid model size: {model_size}. Choose from {list(MODEL_CONFIGS.keys())}")
-    
+        raise ValueError(
+            f"Invalid model size: {model_size}. Choose from {list(MODEL_CONFIGS.keys())}"
+        )
+
     config = MODEL_CONFIGS[model_size]
-    
+
     model = BasicsTransformerLM(
         vocab_size=vocab_size,
         context_length=context_length,
@@ -73,7 +78,7 @@ def create_model(
         d_ff=config["d_ff"],
         rope_theta=10000.0  # Default RoPE theta
     )
-    
+
     return model.to(device)
 
 
@@ -95,15 +100,15 @@ def benchmark_forward_pass(
     use_cuda_sync: bool = True
 ) -> Tuple[float, float]:
     """Benchmark the forward pass of the model."""
-    
+
     times = []
-    
+
     # Warm-up steps
     for _ in range(n_warmup):
         _ = model(data)
         if use_cuda_sync and data.is_cuda:
             torch.cuda.synchronize()
-    
+
     # Measurement steps
     for _ in range(n_steps):
         start_time = timeit.default_timer()
@@ -112,10 +117,10 @@ def benchmark_forward_pass(
             torch.cuda.synchronize()
         end_time = timeit.default_timer()
         times.append(end_time - start_time)
-    
+
     mean_time = np.mean(times)
     std_time = np.std(times)
-    
+
     return mean_time, std_time
 
 
@@ -127,42 +132,48 @@ def benchmark_forward_backward_pass(
     use_cuda_sync: bool = True
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     """Benchmark both forward and backward passes of the model."""
-    
+
     forward_times = []
     backward_times = []
-    
+
     # Create loss function
     loss_fn = nn.CrossEntropyLoss()
-    
+
     # Create target data (shifted input for language modeling)
     target = torch.cat([data[:, 1:], data[:, :1]], dim=1)
-    
+
     # Warm-up steps
     for _ in range(n_warmup):
         # Forward pass
         output = model(data)
-        loss = loss_fn(output.reshape(-1, output.size(-1)), target.reshape(-1))
-        
+        loss = loss_fn(
+            output.reshape(-1, output.size(-1)),
+            target.reshape(-1)
+        )
+
         # Backward pass
         loss.backward()
-        
+
         # Clear gradients for next iteration
         model.zero_grad()
-        
+
         if use_cuda_sync and data.is_cuda:
             torch.cuda.synchronize()
-    
+
     # Measurement steps
     for _ in range(n_steps):
         # Time forward pass
         forward_start = timeit.default_timer()
         output = model(data)
-        loss = loss_fn(output.reshape(-1, output.size(-1)), target.reshape(-1))
+        loss = loss_fn(
+            output.reshape(-1, output.size(-1)),
+            target.reshape(-1)
+        )
         if use_cuda_sync and data.is_cuda:
             torch.cuda.synchronize()
         forward_end = timeit.default_timer()
         forward_times.append(forward_end - forward_start)
-        
+
         # Time backward pass
         backward_start = timeit.default_timer()
         loss.backward()
@@ -170,65 +181,87 @@ def benchmark_forward_backward_pass(
             torch.cuda.synchronize()
         backward_end = timeit.default_timer()
         backward_times.append(backward_end - backward_start)
-        
+
         # Clear gradients for next iteration
         model.zero_grad()
-    
+
     forward_mean = np.mean(forward_times)
     forward_std = np.std(forward_times)
     backward_mean = np.mean(backward_times)
     backward_std = np.std(backward_times)
-    
+
     return (forward_mean, forward_std), (backward_mean, backward_std)
 
 
-def main():
+def main() -> None:
+    """Main function to run benchmarking."""
     parser = argparse.ArgumentParser(description="Benchmark Transformer models")
-    
+
     # Model configuration
-    parser.add_argument("--model-size", type=str, default="small",
-                        choices=list(MODEL_CONFIGS.keys()),
-                        help="Model size configuration")
-    parser.add_argument("--vocab-size", type=int, default=10000,
-                        help="Vocabulary size")
-    parser.add_argument("--context-length", type=int, default=512,
-                        help="Maximum sequence length")
-    
+    parser.add_argument(
+        "--model-size", type=str, default="small",
+        choices=list(MODEL_CONFIGS.keys()),
+        help="Model size configuration"
+    )
+    parser.add_argument(
+        "--vocab-size", type=int, default=10000,
+        help="Vocabulary size"
+    )
+    parser.add_argument(
+        "--context-length", type=int, default=512,
+        help="Maximum sequence length"
+    )
+
     # Data configuration
-    parser.add_argument("--batch-size", type=int, default=4,
-                        help="Batch size for benchmarking")
-    parser.add_argument("--sequence-length", type=int, default=512,
-                        help="Sequence length for input data")
-    
+    parser.add_argument(
+        "--batch-size", type=int, default=4,
+        help="Batch size for benchmarking"
+    )
+    parser.add_argument(
+        "--sequence-length", type=int, default=512,
+        help="Sequence length for input data"
+    )
+
     # Benchmarking configuration
-    parser.add_argument("--n-warmup", type=int, default=5,
-                        help="Number of warm-up steps")
-    parser.add_argument("--n-steps", type=int, default=10,
-                        help="Number of measurement steps")
-    parser.add_argument("--backward", action="store_true",
-                        help="Benchmark both forward and backward passes")
-    
+    parser.add_argument(
+        "--n-warmup", type=int, default=5,
+        help="Number of warm-up steps"
+    )
+    parser.add_argument(
+        "--n-steps", type=int, default=10,
+        help="Number of measurement steps"
+    )
+    parser.add_argument(
+        "--backward", action="store_true",
+        help="Benchmark both forward and backward passes"
+    )
+
     # Device configuration
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
-                        help="Device to use (cpu or cuda)")
-    parser.add_argument("--no-cuda-sync", action="store_true",
-                        help="Disable CUDA synchronization (not recommended for accurate timing)")
-    
+    parser.add_argument(
+        "--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Device to use (cpu or cuda)"
+    )
+    parser.add_argument(
+        "--no-cuda-sync", action="store_true",
+        help="Disable CUDA synchronization (not recommended for accurate timing)"
+    )
+
     args = parser.parse_args()
-    
+
     # Set device
     device = args.device
     if device == "cuda" and not torch.cuda.is_available():
-        print("CUDA not available, falling back to CPU")
+        logger.warning("CUDA not available, falling back to CPU")
         device = "cpu"
-    
+
     use_cuda_sync = not args.no_cuda_sync and device == "cuda"
-    
-    print(f"Benchmarking {args.model_size} model on {device}")
-    print(f"Batch size: {args.batch_size}, Sequence length: {args.sequence_length}")
-    print(f"Warm-up steps: {args.n_warmup}, Measurement steps: {args.n_steps}")
-    print("-" * 60)
-    
+
+    logger.info("Benchmarking %s model on %s", args.model_size, device)
+    logger.info("Batch size: %s, Sequence length: %s", args.batch_size, args.sequence_length)
+    logger.info("Warm-up steps: %s, Measurement steps: %s", args.n_warmup, args.n_steps)
+    logger.info("-" * 60)
+
     # Create model
     model = create_model(
         model_size=args.model_size,
@@ -236,11 +269,11 @@ def main():
         context_length=args.context_length,
         device=device
     )
-    
+
     # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total parameters: {total_params / 1e6:.2f}M")
-    
+    logger.info("Total parameters: %.2fM", total_params / 1e6)
+
     # Generate random data
     data = generate_random_batch(
         batch_size=args.batch_size,
@@ -248,26 +281,41 @@ def main():
         vocab_size=args.vocab_size,
         device=device
     )
-    
+
     if args.backward:
         # Benchmark forward and backward passes
-        print("\nBenchmarking forward and backward passes...")
+        logger.info("Benchmarking forward and backward passes...")
         (forward_mean, forward_std), (backward_mean, backward_std) = benchmark_forward_backward_pass(
             model, data, args.n_warmup, args.n_steps, use_cuda_sync
         )
-        
-        print(f"\nForward pass:  {forward_mean*1000:.2f} ± {forward_std*1000:.2f} ms")
-        print(f"Backward pass: {backward_mean*1000:.2f} ± {backward_std*1000:.2f} ms")
-        print(f"Total:         {(forward_mean + backward_mean)*1000:.2f} ± {(forward_std + backward_std)*1000:.2f} ms")
+
+        logger.info(
+            "Forward pass:  %.2f ± %.2f ms",
+            forward_mean*1000, forward_std*1000
+        )
+        logger.info(
+            "Backward pass: %.2f ± %.2f ms",
+            backward_mean*1000, backward_std*1000
+        )
+        total_mean = (forward_mean + backward_mean) * 1000
+        total_std = (forward_std + backward_std) * 1000
+        logger.info(
+            "Total:         %.2f ± %.2f ms",
+            total_mean, total_std
+        )
     else:
         # Benchmark only forward pass
-        print("\nBenchmarking forward pass only...")
+        logger.info("Benchmarking forward pass only...")
         mean_time, std_time = benchmark_forward_pass(
             model, data, args.n_warmup, args.n_steps, use_cuda_sync
         )
-        
-        print(f"\nForward pass: {mean_time*1000:.2f} ± {std_time*1000:.2f} ms")
+
+        logger.info(
+            "Forward pass: %.2f ± %.2f ms",
+            mean_time*1000, std_time*1000
+        )
 
 
 if __name__ == "__main__":
     main()
+
