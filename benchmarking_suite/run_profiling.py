@@ -70,7 +70,7 @@ def run_profiling_command(
             "--output", profile_output,
             "--force-overwrite", "true",
             "--stats", "true",  # Generate statistics
-            "--python-backtrace", "cuda",  # Python backtraces for CUDA calls
+            "--python-backtrace=true",  # Enable Python backtraces
             "python", "benchmark_profiling.py",
             "--model-size", model_size,
             "--sequence-length", str(context_length),

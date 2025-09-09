@@ -50,7 +50,7 @@ run_profile() {
         --output=${OUTPUT_DIR}/${output_name} \
         --force-overwrite=true \
         --stats=true \
-        --python-backtrace=cuda \
+        --python-backtrace=true \
         python benchmark_profiling.py \
         --model-size ${model} \
         --sequence-length ${context_len} \
