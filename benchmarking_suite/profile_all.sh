@@ -45,12 +45,12 @@ run_profile() {
     echo "[$(date +%H:%M:%S)] Profiling: ${model} with context=${context_len}" >> "${LOG_FILE}"
     
     # Create nsys command
-    nsys_cmd="nsys profile \
+    nsys_cmd="uv run nsys profile \
         --pytorch=autograd-nvtx \
         --output=${OUTPUT_DIR}/${output_name} \
         --force-overwrite=true \
         --stats=true \
-        --python-backtrace=true \
+        --python-backtrace=cuda \
         python benchmark_profiling.py \
         --model-size ${model} \
         --sequence-length ${context_len} \
