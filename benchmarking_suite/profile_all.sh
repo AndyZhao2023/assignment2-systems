@@ -46,7 +46,7 @@ run_profile() {
     
     # Create nsys command
     nsys_cmd="nsys profile \
-        --pytorch \
+        --pytorch=autograd-nvtx \
         --output=${OUTPUT_DIR}/${output_name} \
         --force-overwrite=true \
         --stats=true \

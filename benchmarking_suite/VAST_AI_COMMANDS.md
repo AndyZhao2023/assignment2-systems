@@ -42,7 +42,7 @@ uv run python benchmark_profiling.py \
 
 # Test with nsys (basic)
 uv run nsys profile \
-    --pytorch \
+    --pytorch=autograd-nvtx \
     --output=test_profile \
     --force-overwrite=true \
     python benchmark_profiling.py \
@@ -54,7 +54,7 @@ uv run nsys profile \
 
 # Test with enhanced annotations (detailed profiling)
 uv run nsys profile \
-    --pytorch \
+    --pytorch=autograd-nvtx \
     --output=test_profile_detailed \
     --force-overwrite=true \
     python benchmark_profiling.py \
@@ -93,25 +93,25 @@ Run these commands for each model/context combination:
 cd benchmarking_suite
 
 # Context 128
-uv run nsys profile --pytorch --output=profiles/small_ctx128 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/small_ctx128 --force-overwrite=true \
     python benchmark_profiling.py --model-size small --sequence-length 128 --context-length 128 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/small_ctx128.json
 
 # Context 256
-uv run nsys profile --pytorch --output=profiles/small_ctx256 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/small_ctx256 --force-overwrite=true \
     python benchmark_profiling.py --model-size small --sequence-length 256 --context-length 256 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/small_ctx256.json
 
 # Context 512
-uv run nsys profile --pytorch --output=profiles/small_ctx512 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/small_ctx512 --force-overwrite=true \
     python benchmark_profiling.py --model-size small --sequence-length 512 --context-length 512 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/small_ctx512.json
 
 # Context 1024
-uv run nsys profile --pytorch --output=profiles/small_ctx1024 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/small_ctx1024 --force-overwrite=true \
     python benchmark_profiling.py --model-size small --sequence-length 1024 --context-length 1024 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/small_ctx1024.json
@@ -120,25 +120,25 @@ uv run nsys profile --pytorch --output=profiles/small_ctx1024 --force-overwrite=
 ### Medium Model
 ```bash
 # Context 128
-uv run nsys profile --pytorch --output=profiles/medium_ctx128 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/medium_ctx128 --force-overwrite=true \
     python benchmark_profiling.py --model-size medium --sequence-length 128 --context-length 128 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/medium_ctx128.json
 
 # Context 256
-uv run nsys profile --pytorch --output=profiles/medium_ctx256 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/medium_ctx256 --force-overwrite=true \
     python benchmark_profiling.py --model-size medium --sequence-length 256 --context-length 256 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/medium_ctx256.json
 
 # Context 512
-uv run nsys profile --pytorch --output=profiles/medium_ctx512 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/medium_ctx512 --force-overwrite=true \
     python benchmark_profiling.py --model-size medium --sequence-length 512 --context-length 512 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/medium_ctx512.json
 
 # Context 1024
-uv run nsys profile --pytorch --output=profiles/medium_ctx1024 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/medium_ctx1024 --force-overwrite=true \
     python benchmark_profiling.py --model-size medium --sequence-length 1024 --context-length 1024 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/medium_ctx1024.json
@@ -147,25 +147,25 @@ uv run nsys profile --pytorch --output=profiles/medium_ctx1024 --force-overwrite
 ### Large Model
 ```bash
 # Context 128
-uv run nsys profile --pytorch --output=profiles/large_ctx128 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/large_ctx128 --force-overwrite=true \
     python benchmark_profiling.py --model-size large --sequence-length 128 --context-length 128 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/large_ctx128.json
 
 # Context 256
-uv run nsys profile --pytorch --output=profiles/large_ctx256 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/large_ctx256 --force-overwrite=true \
     python benchmark_profiling.py --model-size large --sequence-length 256 --context-length 256 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/large_ctx256.json
 
 # Context 512
-uv run nsys profile --pytorch --output=profiles/large_ctx512 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/large_ctx512 --force-overwrite=true \
     python benchmark_profiling.py --model-size large --sequence-length 512 --context-length 512 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/large_ctx512.json
 
 # Context 1024 (may OOM)
-uv run nsys profile --pytorch --output=profiles/large_ctx1024 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/large_ctx1024 --force-overwrite=true \
     python benchmark_profiling.py --model-size large --sequence-length 1024 --context-length 1024 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/large_ctx1024.json
@@ -174,19 +174,19 @@ uv run nsys profile --pytorch --output=profiles/large_ctx1024 --force-overwrite=
 ### XL Model (likely to OOM on longer contexts)
 ```bash
 # Context 128
-uv run nsys profile --pytorch --output=profiles/xl_ctx128 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/xl_ctx128 --force-overwrite=true \
     python benchmark_profiling.py --model-size xl --sequence-length 128 --context-length 128 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/xl_ctx128.json
 
 # Context 256
-uv run nsys profile --pytorch --output=profiles/xl_ctx256 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/xl_ctx256 --force-overwrite=true \
     python benchmark_profiling.py --model-size xl --sequence-length 256 --context-length 256 \
     --batch-size 4 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/xl_ctx256.json
 
 # Context 512 (may OOM)
-uv run nsys profile --pytorch --output=profiles/xl_ctx512 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/xl_ctx512 --force-overwrite=true \
     python benchmark_profiling.py --model-size xl --sequence-length 512 --context-length 512 \
     --batch-size 2 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/xl_ctx512.json
@@ -195,13 +195,13 @@ uv run nsys profile --pytorch --output=profiles/xl_ctx512 --force-overwrite=true
 ### 2.7B Model (likely to OOM on most configs)
 ```bash
 # Context 128 with reduced batch size
-uv run nsys profile --pytorch --output=profiles/2.7B_ctx128 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/2.7B_ctx128 --force-overwrite=true \
     python benchmark_profiling.py --model-size 2.7B --sequence-length 128 --context-length 128 \
     --batch-size 2 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/2.7B_ctx128.json
 
 # Context 256 with batch size 1
-uv run nsys profile --pytorch --output=profiles/2.7B_ctx256 --force-overwrite=true \
+uv run nsys profile --pytorch=autograd-nvtx --output=profiles/2.7B_ctx256 --force-overwrite=true \
     python benchmark_profiling.py --model-size 2.7B --sequence-length 256 --context-length 256 \
     --batch-size 1 --n-warmup 5 --n-steps 10 --with-optimizer --annotate-attention \
     --output-json profiles/2.7B_ctx256.json
