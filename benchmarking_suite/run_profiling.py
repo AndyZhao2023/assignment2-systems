@@ -65,12 +65,13 @@ def run_profiling_command(
         # Nsight Systems profiling command
         profile_output = os.path.join(output_dir, f"{base_name}")
         cmd = [
+            "uv", "run",
             "nsys", "profile",
             "--pytorch=autograd-nvtx",  # Automatic PyTorch annotation with NVTX
-            "--output", profile_output,
-            "--force-overwrite", "true",
-            "--stats", "true",  # Generate statistics
-            "--python-backtrace=true",  # Enable Python backtraces
+            f"--output={profile_output}",
+            "--force-overwrite=true",
+            "--stats=true",  # Generate statistics
+            "--python-backtrace=cuda",  # Python backtraces for CUDA calls
             "python", "benchmark_profiling.py",
             "--model-size", model_size,
             "--sequence-length", str(context_length),
